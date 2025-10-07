@@ -1,0 +1,42 @@
+# Configuración de Desarrollo
+development:
+  # Configuración para desarrollo local
+  model:
+    base_model: "yolo11s.pt"
+    person_model: "yolo11s.pt"
+    training:
+      epochs: 10 # Menos épocas para desarrollo rápido
+      batch_size: 8
+      image_size: 416 # Tamaño menor para desarrollo
+      patience: 5
+    prediction:
+      confidence_threshold: 0.25
+      iou_threshold: 0.45
+
+# Configuración de Producción
+production:
+  model:
+    base_model: "yolo11m.pt" # Modelo más grande
+    person_model: "yolo11m.pt"
+    training:
+      epochs: 100
+      batch_size: 16
+      image_size: 640
+      patience: 15
+    prediction:
+      confidence_threshold: 0.3
+      iou_threshold: 0.5
+
+# Configuración de Experimento
+experiment:
+  model:
+    base_model: "yolo11l.pt" # Modelo grande para experimentos
+    person_model: "yolo11l.pt"
+    training:
+      epochs: 200
+      batch_size: 8 # Batch más pequeño para modelo grande
+      image_size: 832
+      patience: 20
+    prediction:
+      confidence_threshold: 0.35
+      iou_threshold: 0.55
