@@ -307,6 +307,57 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ## 🎯 Uso Rápido
 
+### Comandos de Terminal (Recomendado)
+
+```bash
+# Configurar proyecto (solo primera vez)
+./run.sh setup
+
+# Entrenar modelo
+./run.sh train
+
+# Predicciones en imágenes
+./run.sh predict --input data/raw/test_images/
+
+# Procesar video
+./run.sh video --input input.mp4 --output output.mp4
+
+# Detección en tiempo real con cámara
+./run.sh camera --weights models/weights/best_nopal.pt
+
+# Listar cámaras disponibles
+./run.sh list-cameras
+
+# Abrir notebook interactivo
+./run.sh notebook
+```
+
+### 📹 Funcionalidades de Cámara en Tiempo Real
+
+```bash
+# Usar cámara por defecto (0)
+./run.sh camera --weights models/weights/best_nopal.pt
+
+# Usar cámara específica
+./run.sh camera --camera 1 --weights models/weights/best_nopal.pt
+
+# Configurar resolución
+./run.sh camera --resolution 1280x720 --weights models/weights/best_nopal.pt
+
+# Guardar video de la sesión
+./run.sh camera --save-video --weights models/weights/best_nopal.pt
+
+# Combinar opciones
+./run.sh camera --camera 1 --resolution 1920x1080 --save-video --weights models/weights/best_nopal.pt
+```
+
+#### Controles Durante Detección
+- **`q`**: Salir de la aplicación
+- **`r`**: Iniciar/pausar grabación de video
+- **Información en pantalla**: FPS, número de detecciones, tiempo transcurrido
+
+### 📔 Uso con Notebook
+
 1. Abrir el notebook `notebooks/nopal_detector_training.ipynb`
 2. Ejecutar las celdas en orden
 3. Los resultados se guardarán en `outputs/`

@@ -24,6 +24,8 @@ show_help() {
     echo "  train      - Entrenar modelo"
     echo "  predict    - Hacer predicciones en imágenes"
     echo "  video      - Procesar video"
+    echo "  camera     - Detección en tiempo real con cámara"
+    echo "  list-cameras - Listar cámaras disponibles"
     echo "  notebook   - Abrir Jupyter Lab"
     echo "  clean      - Limpiar archivos temporales"
     echo ""
@@ -32,6 +34,9 @@ show_help() {
     echo "  ./run.sh train"
     echo "  ./run.sh predict --input /ruta/imagenes"
     echo "  ./run.sh video --input video.mp4"
+    echo "  ./run.sh list-cameras"
+    echo "  ./run.sh camera --weights models/weights/best_nopal.pt"
+    echo "  ./run.sh camera --camera 1 --save-video --resolution 1280x720"
     echo "  ./run.sh notebook"
 }
 
@@ -98,6 +103,21 @@ cmd_video() {
     python main.py --mode video "$@"
 }
 
+# Comando: camera
+cmd_camera() {
+    echo -e "${BLUE}📹 Iniciando detección en tiempo real...${NC}"
+    activate_venv
+    check_config
+    python main.py --mode camera "$@"
+}
+
+# Comando: list-cameras
+cmd_list_cameras() {
+    echo -e "${BLUE}🎥 Listando cámaras disponibles...${NC}"
+    activate_venv
+    python main.py --mode list-cameras
+}
+
 # Comando: notebook
 cmd_notebook() {
     echo -e "${BLUE}📓 Abriendo Jupyter Lab...${NC}"
@@ -161,6 +181,12 @@ main() {
             ;;
         "video")
             cmd_video "$@"
+            ;;
+        "camera")
+            cmd_camera "$@"
+            ;;
+        "list-cameras")
+            cmd_list_cameras "$@"
             ;;
         "notebook")
             cmd_notebook "$@"

@@ -55,8 +55,44 @@
 | `./run.sh train` | Entrenar modelo |
 | `./run.sh predict --input /ruta/imagenes` | Procesar imágenes |
 | `./run.sh video --input video.mp4` | Procesar video |
+| `./run.sh list-cameras` | Ver cámaras disponibles |
+| `./run.sh camera --weights modelo.pt` | Detección en tiempo real |
 | `./run.sh notebook` | Abrir Jupyter Lab |
 | `./run.sh clean` | Limpiar archivos temporales |
+
+## 📹 Detección en Tiempo Real con Cámara
+
+### Configuración Inicial
+```bash
+# 1. Verificar cámaras disponibles
+./run.sh list-cameras
+
+# 2. Tener un modelo entrenado
+./run.sh train  # Si no tienes modelo aún
+
+# 3. Iniciar detección
+./run.sh camera --weights models/weights/best_nopal.pt
+```
+
+### Opciones de Cámara
+```bash
+# Cámara específica
+./run.sh camera --camera 1 --weights models/weights/best_nopal.pt
+
+# Resolución personalizada
+./run.sh camera --resolution 1280x720 --weights models/weights/best_nopal.pt
+
+# Guardar video de la sesión
+./run.sh camera --save-video --weights models/weights/best_nopal.pt
+
+# Todas las opciones combinadas
+./run.sh camera --camera 1 --resolution 1920x1080 --save-video --weights models/weights/best_nopal.pt
+```
+
+### Controles en Vivo
+- **`q`**: Salir de la aplicación
+- **`r`**: Iniciar/pausar grabación
+- **Info en pantalla**: FPS, detecciones, tiempo
 
 ## 🎨 Configuraciones Rápidas
 
@@ -151,10 +187,20 @@ ffmpeg -i tu_video.mov tu_video.mp4
    ./run.sh video --input mi_video.mp4
    ```
 
-5. **Ver resultados:**
+5. **Detección en tiempo real:**
+   ```bash
+   # Ver cámaras disponibles
+   ./run.sh list-cameras
+   
+   # Usar cámara
+   ./run.sh camera --weights models/weights/best_nopal.pt
+   ```
+
+6. **Ver resultados:**
    - Imágenes: `outputs/predictions/`
    - Videos: `outputs/videos/`
    - Gráficos: `outputs/visualizations/`
+   - Videos de cámara: `outputs/videos/camera_YYYYMMDD_HHMMSS.mp4`
 
 ## 🔧 Modo Desarrollo
 

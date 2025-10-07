@@ -45,9 +45,22 @@ models/weights/*.onnx
 models/weights/*.tflite
 !models/weights/.gitkeep
 
+# Modelos base de YOLO (no subir, se descargan automáticamente)
+*.pt
+yolo*.pt
+yolov*.pt
+
 # Datos descargados (pueden ser muy grandes)
 data/raw/*
 data/processed/*
+!data/raw/README.md
+!data/*/README.md
+!data/*/.gitkeep
+
+# Datasets de Roboflow (no subir, se descargan automáticamente)
+nopal-detector-*/
+*-detector-*/
+dataset-*/
 !data/raw/README.md
 !data/*/README.md
 !data/*/.gitkeep
@@ -63,6 +76,10 @@ runs/
 logs/
 *.log
 yolo_runs/
+
+# Archivos de cámara temporal
+outputs/predictions/camera_frame_*.jpg
+outputs/videos/camera_*.mp4
 
 # IDEs y editores
 .vscode/
