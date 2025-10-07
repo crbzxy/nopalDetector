@@ -132,7 +132,8 @@ source venv/bin/activate
 
 **Paso 3:** ¡Inicia la detección en tiempo real!
 ```bash
-python main.py --mode camera
+# COMANDO COMPLETO (probado y funcionando):
+python main.py --mode camera --camera 1 --weights runs/detect/train/weights/best.pt
 ```
 
 **🎮 Controles durante la detección:**
@@ -264,8 +265,8 @@ pip install -r requirements.txt
 1. Verifica que tu cámara funcione en otras aplicaciones
 2. Prueba con diferentes índices de cámara:
    ```bash
-   python main.py --mode camera --camera 0  # Cámara principal
-   python main.py --mode camera --camera 1  # Cámara secundaria
+   python main.py --mode camera --camera 0 --weights runs/detect/train/weights/best.pt  # Cámara principal
+   python main.py --mode camera --camera 1 --weights runs/detect/train/weights/best.pt  # Cámara secundaria
    ```
 3. En macOS: Da permisos de cámara a la Terminal
 
