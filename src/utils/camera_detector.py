@@ -30,9 +30,9 @@ class CameraDetector:
                     'person_model_path': 'yolo11s.pt'  # Modelo base para personas
                 },
                 'prediction': {
-                    'confidence_threshold': 0.7,  # Aumentado de 0.5 a 0.7 para menos falsos positivos
-                    'iou_threshold': 0.5,         # Aumentado para mejor supresión de duplicados
-                    'max_detections': 10           # Reducido para evitar sobredetección
+                    'confidence_threshold': 0.90,  # Muy estricto para evitar falsos positivos
+                    'iou_threshold': 0.7,          # Supresión muy agresiva
+                    'max_detections': 3             # Máximo 3 nopales por frame
                 }
             }
             self.model_config = self.config['model']
@@ -50,6 +50,9 @@ class CameraDetector:
         self.is_running = False
         self.frame_queue = queue.Queue(maxsize=2)
         self.result_queue = queue.Queue(maxsize=2)
+        
+        # Configuración de filtros
+        self.use_size_filters = True  # Activar filtros de tamaño por defecto
         
         # Estadísticas en tiempo real
         self.fps_counter = 0
@@ -169,6 +172,9 @@ class CameraDetector:
                 print("🤖 Cargando modelos...")
                 self._load_models()
             
+            # Guardar índice de cámara para reconexión
+            self._current_camera_index = camera_index
+            
             # Liberar cámara anterior si existe
             if self.cap:
                 self.cap.release()
@@ -195,9 +201,8 @@ class CameraDetector:
             # Configurar FPS
             self.cap.set(cv2.CAP_PROP_FPS, 30)
             
-            # Configuraciones básicas para estabilidad (opcional)
-            if hasattr(self, '_apply_basic_settings') and self._apply_basic_settings:
-                self._configure_camera_settings()
+            # Solo configuraciones básicas sin automáticos
+            # No aplicar configuraciones que puedan causar inestabilidad
             
             # Verificar configuración
             actual_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -279,22 +284,6 @@ class CameraDetector:
         except Exception as e:
             print(f"   ⚠️  Algunos ajustes no están disponibles: {e}")
     
-    def set_manual_focus(self, focus_value: float):
-        """
-        Configurar enfoque manual
-        
-        Args:
-            focus_value: Valor de enfoque (0.0 a 1.0)
-        """
-        try:
-            # Desactivar enfoque automático
-            self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-            # Configurar enfoque manual
-            self.cap.set(cv2.CAP_PROP_FOCUS, focus_value)
-            print(f"🎯 Enfoque manual configurado: {focus_value}")
-        except Exception as e:
-            print(f"❌ Error configurando enfoque manual: {e}")
-    
     def enable_advanced_settings(self):
         """Activar configuraciones avanzadas de cámara"""
         self._apply_basic_settings = True
@@ -307,13 +296,33 @@ class CameraDetector:
         self._apply_basic_settings = False
         print("✅ Usando configuración básica y estable")
     
-    def enable_auto_focus(self):
-        """Activar enfoque automático"""
+    def _check_camera_health(self) -> bool:
+        """Verificar si la cámara está funcionando correctamente"""
+        if not self.cap or not self.cap.isOpened():
+            return False
+        
+        # Intentar leer un frame de prueba
+        ret, frame = self.cap.read()
+        return ret and frame is not None
+    
+    def _reconnect_camera(self, camera_index: int) -> bool:
+        """Intentar reconectar la cámara"""
         try:
-            self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-            print("🎯 Enfoque automático activado")
+            print("🔄 Intentando reconectar cámara...")
+            if self.cap:
+                self.cap.release()
+            
+            self.cap = cv2.VideoCapture(camera_index)
+            
+            if self.cap.isOpened() and self._check_camera_health():
+                print("✅ Cámara reconectada exitosamente")
+                return True
+            else:
+                print("❌ No se pudo reconectar la cámara")
+                return False
         except Exception as e:
-            print(f"❌ Error activando enfoque automático: {e}")
+            print(f"❌ Error reconectando cámara: {e}")
+            return False
     
     def process_frame(self, frame: np.ndarray) -> np.ndarray:
         """
@@ -349,8 +358,30 @@ class CameraDetector:
             # Dibujar detecciones de nopales (verde)
             if res_nopal and len(res_nopal) > 0 and res_nopal[0].boxes is not None:
                 for box in res_nopal[0].boxes:
-                    nopal_count += 1
                     x1, y1, x2, y2 = [int(coord) for coord in box.xyxy[0]]
+                    
+                    # Filtros para reducir falsos positivos (solo si están activados)
+                    if self.use_size_filters:
+                        box_width = x2 - x1
+                        box_height = y2 - y1
+                        box_area = box_width * box_height
+                        frame_area = frame.shape[0] * frame.shape[1]
+                        area_ratio = box_area / frame_area
+                        
+                        # Filtro 1: Rechazar detecciones muy grandes (probablemente personas)
+                        if area_ratio > 0.12:  # Más del 12% del frame
+                            continue
+                        
+                        # Filtro 2: Filtro por tamaño mínimo (evitar ruido)
+                        if box_width < 30 or box_height < 30:  # Muy pequeño
+                            continue
+                        
+                        # Filtro 3: Aspecto ratio - nopales no son extremadamente alargados
+                        aspect_ratio = box_width / box_height if box_height > 0 else 0
+                        if aspect_ratio > 4.0 or aspect_ratio < 0.25:  # Muy alargado o muy alto
+                            continue
+                    
+                    nopal_count += 1
                     
                     # Dibujar rectángulo
                     cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -499,30 +530,49 @@ class CameraDetector:
         print("   Presiona 'q' para salir")
         print("   Presiona 's' para guardar frame actual")
         print("   Presiona 'space' para pausar/reanudar")
-        print("   Controles de enfoque:")
-        print("     'f' - Enfoque automático")
-        print("     '1' - Enfoque cercano")
-        print("     '2' - Enfoque medio") 
-        print("     '3' - Enfoque lejano")
-        print("     '+' - Aumentar enfoque")
-        print("     '-' - Disminuir enfoque")
         print("   Controles de detección:")
         print("     'c' - Aumentar confianza (menos detecciones)")
         print("     'v' - Disminuir confianza (más detecciones)")
         print("     'x' - Aumentar IoU (menos duplicados)")
         print("     'z' - Disminuir IoU (más detecciones)")
+        print("     'f' - Activar/desactivar filtros de tamaño")
+        
+        # Mostrar configuración inicial
+        conf_thresh = self.config.get('prediction', {}).get('confidence_threshold', 0.85)
+        iou_thresh = self.config.get('prediction', {}).get('iou_threshold', 0.6)
+        print(f"   📊 Configuración inicial: Confianza={conf_thresh:.2f}, IoU={iou_thresh:.2f}")
         
         self.is_running = True
         paused = False
         frame_counter = 0
+        error_counter = 0
+        max_errors = 5  # Máximo de errores consecutivos antes de salir
         
         try:
             while self.is_running:
                 if not paused:
                     ret, frame = self.cap.read()
                     if not ret:
-                        print("❌ Error leyendo frame de la cámara")
-                        break
+                        error_counter += 1
+                        print(f"⚠️ Error leyendo frame de la cámara (intento {error_counter}/{max_errors})")
+                        
+                        if error_counter >= max_errors:
+                            print("❌ Demasiados errores consecutivos. Cerrando...")
+                            break
+                        
+                        # Intentar reconectar la cámara cada 3 errores
+                        if error_counter % 3 == 0:
+                            camera_index = getattr(self, '_current_camera_index', 0)
+                            if not self._reconnect_camera(camera_index):
+                                print("❌ No se pudo recuperar la conexión de la cámara")
+                                break
+                        
+                        # Pausa breve antes del siguiente intento
+                        time.sleep(0.1)
+                        continue
+                    
+                    # Reset contador de errores si el frame se lee correctamente
+                    error_counter = 0
                     
                     # Procesar frame
                     annotated_frame = self.process_frame(frame)
@@ -556,22 +606,6 @@ class CameraDetector:
                     paused = not paused
                     status = "pausado" if paused else "reanudado"
                     print(f"⏸️ Video {status}")
-                elif key == ord('f'):  # Activar enfoque automático
-                    self.enable_auto_focus()
-                elif key == ord('1'):  # Enfoque cercano
-                    self.set_manual_focus(0.2)
-                elif key == ord('2'):  # Enfoque medio
-                    self.set_manual_focus(0.5)
-                elif key == ord('3'):  # Enfoque lejano
-                    self.set_manual_focus(0.8)
-                elif key == ord('+') or key == ord('='):  # Aumentar enfoque
-                    current_focus = self.cap.get(cv2.CAP_PROP_FOCUS)
-                    new_focus = min(1.0, current_focus + 0.1)
-                    self.set_manual_focus(new_focus)
-                elif key == ord('-'):  # Disminuir enfoque
-                    current_focus = self.cap.get(cv2.CAP_PROP_FOCUS)
-                    new_focus = max(0.0, current_focus - 0.1)
-                    self.set_manual_focus(new_focus)
                 elif key == ord('c'):  # Aumentar umbral de confianza
                     current_conf = self.config['prediction']['confidence_threshold']
                     new_conf = min(0.95, current_conf + 0.05)
@@ -592,6 +626,10 @@ class CameraDetector:
                     new_iou = max(0.1, current_iou - 0.05)
                     self.config['prediction']['iou_threshold'] = new_iou
                     print(f"🔧 Umbral IoU: {new_iou:.2f}")
+                elif key == ord('f'):  # Activar/desactivar filtros de tamaño
+                    self.use_size_filters = not self.use_size_filters
+                    status = "activados" if self.use_size_filters else "desactivados"
+                    print(f"🔍 Filtros de tamaño: {status}")
         
         except KeyboardInterrupt:
             print("\n⚠️ Interrumpido por usuario")

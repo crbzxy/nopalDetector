@@ -119,10 +119,10 @@ def main():
         if camera_detector.setup_camera(args.camera, resolution):
             # Solo aplicar configuraciones avanzadas si se solicita
             if args.auto_focus:
-                print("🎯 Aplicando configuraciones avanzadas de enfoque...")
+                print("🎯 Aplicando configuraciones avanzadas...")
                 camera_detector.enable_advanced_settings()
                 import time
-                time.sleep(3)  # Esperar que se ajuste el enfoque
+                time.sleep(3)  # Esperar que se ajuste
             else:
                 print("✅ Usando configuración básica y estable")
             

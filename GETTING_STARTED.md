@@ -1,245 +1,158 @@
 # 🚀 Guía de Inicio Rápido - Nopal Detector
 
-¡Bienvenido a Nopal Detector! Esta guía te ayudará a configurar y usar el proyecto en menos de 5 minutos.
+**¡Bienvenido! Esta guía te ayudará a usar el detector de nopales en menos de 5 minutos.**
 
-## ⚡ Inicio Ultra-Rápido
+## 🎯 ¿Qué Vas a Lograr?
 
+Al final de esta guía podrás:
+- ✅ Detectar nopales usando tu cámara web en tiempo real
+- ✅ Procesar imágenes para encontrar nopales automáticamente  
+- ✅ Entender cómo funciona el sistema sin conocimientos técnicos
+
+## ⚡ Inicio Súper Rápido (3 pasos)
+
+### Paso 1: Preparar el Sistema
 ```bash
-# 1. Configurar proyecto
-./run.sh setup
-
-# 2. Verificar que todo esté bien
-./run.sh verify
-
-# 3. Entrenar modelo
-./run.sh train
-
-# 4. O usar notebook interactivo
-./run.sh notebook
+# Copia y pega esto en tu terminal:
+git clone https://github.com/crbzxy/nopalDetector.git
+cd nopalDetector
 ```
 
-## 🎯 Lo Esencial
-
-### ✅ Lo que SÍ necesitas hacer:
-
-1. **Obtener API Key de Roboflow:**
-   - Ve a [roboflow.com](https://roboflow.com)
-   - Registrate/inicia sesión
-   - Ve a Settings → API Keys
-   - Copia tu API key
-
-2. **Configurar archivo .env:**
-   ```bash
-   cp .env.example .env
-   nano .env  # Pegar tu API key aquí
-   ```
-
-3. **Ejecutar setup:**
-   ```bash
-   ./run.sh setup
-   ```
-
-### ❌ Lo que NO necesitas hacer:
-
-- ❌ Instalar YOLO manualmente
-- ❌ Descargar datasets manualmente
-- ❌ Configurar directorios manualmente
-- ❌ Instalar dependencias una por una
-
-## 🛠️ Comandos Útiles
-
-| Comando | Descripción |
-|---------|-------------|
-| `./run.sh setup` | Configuración inicial completa |
-| `./run.sh verify` | Verificar que todo esté bien |
-| `./run.sh train` | Entrenar modelo |
-| `./run.sh predict --input /ruta/imagenes` | Procesar imágenes |
-| `./run.sh video --input video.mp4` | Procesar video |
-| `./run.sh list-cameras` | Ver cámaras disponibles |
-| `./run.sh camera --weights modelo.pt` | Detección en tiempo real |
-| `./run.sh notebook` | Abrir Jupyter Lab |
-| `./run.sh clean` | Limpiar archivos temporales |
-
-## 📹 Detección en Tiempo Real con Cámara
-
-### Configuración Inicial
+### Paso 2: Instalación Automática
 ```bash
-# 1. Verificar cámaras disponibles
-./run.sh list-cameras
+# Este script instala TODO automáticamente:
+./setup.sh
+```
+*Esto puede tomar 2-3 minutos. ¡Ve por un café! ☕*
 
-# 2. Tener un modelo entrenado
-./run.sh train  # Si no tienes modelo aún
-
-# 3. Iniciar detección
-./run.sh camera --weights models/weights/best_nopal.pt
+### Paso 3: ¡Probar que Funciona!
+```bash
+# Verifica que todo esté bien:
+python verify_setup.py
 ```
 
-### Opciones de Cámara
-```bash
-# Cámara específica
-./run.sh camera --camera 1 --weights models/weights/best_nopal.pt
+**¡Si ves "✅ Todo configurado correctamente", ya puedes empezar!**
 
-# Resolución personalizada
-./run.sh camera --resolution 1280x720 --weights models/weights/best_nopal.pt
+## 🎮 Usar el Detector
 
-# Guardar video de la sesión
-./run.sh camera --save-video --weights models/weights/best_nopal.pt
-
-# Todas las opciones combinadas
-./run.sh camera --camera 1 --resolution 1920x1080 --save-video --weights models/weights/best_nopal.pt
-```
-
-### Controles en Vivo
-- **`q`**: Salir de la aplicación
-- **`r`**: Iniciar/pausar grabación
-- **Info en pantalla**: FPS, detecciones, tiempo
-
-## 🎨 Configuraciones Rápidas
-
-### Para Pruebas Rápidas (5 min):
-```bash
-# Editar config/model_config.yaml
-training:
-  epochs: 5
-  batch_size: 4
-  image_size: 416
-```
-
-### Para Resultados Buenos (30 min):
-```bash
-# Usar configuración por defecto
-training:
-  epochs: 50
-  batch_size: 16
-  image_size: 640
-```
-
-### Para Máxima Calidad (2-3 horas):
-```bash
-# Editar config/model_config.yaml
-training:
-  epochs: 100
-  batch_size: 8
-  image_size: 832
-```
-
-## 🐛 Problemas Comunes
-
-### "ROBOFLOW_API_KEY not found"
-```bash
-# Solución:
-cp .env.example .env
-nano .env  # Agregar tu API key real
-```
-
-### "No module named 'ultralytics'"
-```bash
-# Solución:
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### "Permission denied: ./run.sh"
-```bash
-# Solución:
-chmod +x run.sh setup.sh
-```
-
-### Video no se procesa
-```bash
-# Solución: Verificar formato
-# Formatos soportados: .mp4, .avi, .mov
-ffmpeg -i tu_video.mov tu_video.mp4
-```
-
-## 📁 ¿Qué Archivos Modificar?
-
-### Para Personalizar Dataset:
-- `config/model_config.yaml` → sección `roboflow`
-
-### Para Ajustar Entrenamiento:
-- `config/model_config.yaml` → sección `training`
-- `config/training_config.yaml` → diferentes perfiles
-
-### Para Cambiar Detección:
-- `config/model_config.yaml` → sección `prediction`
-
-## 🎯 Flujo Típico de Trabajo
-
-1. **Primera vez:**
-   ```bash
-   ./run.sh setup
-   ./run.sh verify
-   ```
-
-2. **Entrenar modelo:**
-   ```bash
-   ./run.sh train
-   ```
-
-3. **Probar con imágenes:**
-   ```bash
-   ./run.sh predict --input data/test_images/
-   ```
-
-4. **Procesar video:**
-   ```bash
-   ./run.sh video --input mi_video.mp4
-   ```
-
-5. **Detección en tiempo real:**
-   ```bash
-   # Ver cámaras disponibles
-   ./run.sh list-cameras
-   
-   # Usar cámara
-   ./run.sh camera --weights models/weights/best_nopal.pt
-   ```
-
-6. **Ver resultados:**
-   - Imágenes: `outputs/predictions/`
-   - Videos: `outputs/videos/`
-   - Gráficos: `outputs/visualizations/`
-   - Videos de cámara: `outputs/videos/camera_YYYYMMDD_HHMMSS.mp4`
-
-## 🔧 Modo Desarrollo
-
-Si quieres modificar el código:
+### 🎥 Opción 1: Cámara en Tiempo Real (¡Recomendado!)
 
 ```bash
-# Activar entorno
+# Activa el entorno:
 source venv/bin/activate
 
-# Modificar código en src/
+# ¡Inicia la detección!
+python main.py --mode camera
+```
 
-# Probar cambios
+**🎮 Controles mientras usas la cámara:**
+- **Q** = Salir
+- **S** = Guardar la imagen actual
+- **ESPACIO** = Pausar/reanudar
+- **C** = Hacer detección más estricta (menos falsos positivos)
+- **V** = Hacer detección más permisiva (detecta más objetos)
+- **F** = Activar/desactivar filtros inteligentes
+
+### 📸 Opción 2: Analizar una Imagen
+
+```bash
+# Para analizar una imagen específica:
+python main.py --mode predict --source "ruta/a/tu/imagen.jpg"
+```
+
+### 🎬 Opción 3: Procesar un Video
+
+```bash
+# Para procesar un video completo:
+python main.py --mode video --source "ruta/a/tu/video.mp4"
+```
+
+## 💡 Consejos para Mejores Resultados
+
+### 🎯 Para Reducir Falsas Detecciones:
+1. **Usa buena iluminación** - Evita sombras fuertes
+2. **Mantén la cámara estable** - Los movimientos bruscos confunden al detector
+3. **Ajusta la sensibilidad** - Presiona **C** durante la detección para hacerla más estricta
+4. **Activa los filtros** - Presiona **F** para filtrar objetos demasiado grandes
+
+### 📱 Para Mejores Detecciones:
+- **Distancia ideal:** 1-3 metros del nopal
+- **Ángulo:** Frontal o ligeramente lateral
+- **Fondo:** Preferiblemente despejado
+- **Iluminación:** Natural durante el día es ideal
+
+## ❓ ¿Algo No Funciona?
+
+### 🚨 Problemas Comunes:
+
+**"No se encuentra la cámara"**
+```bash
+# Prueba con diferentes cámaras:
+python main.py --mode camera --camera 0  # Cámara principal
+python main.py --mode camera --camera 1  # Cámara secundaria
+```
+
+**"El detector detecta personas como nopales"**
+```bash
+# Durante la detección, presiona:
+# C = Aumentar precisión
+# F = Activar filtros de tamaño
+```
+
+**"Error de instalación"**
+```bash
+# Reinstala todo desde cero:
+rm -rf venv/
+./setup.sh
+```
+
+**"Python no encontrado"**
+- Instala Python desde [python.org](https://python.org)
+- En macOS/Linux usa `python3` en lugar de `python`
+
+## 🎓 ¿Quieres Aprender Más?
+
+### 📚 Documentación Completa:
+- Lee el `README.md` para información técnica detallada
+- Explora la carpeta `notebooks/` para ejemplos interactivos
+
+### 🛠️ Personalización:
+- Edita `config/model_config.yaml` para cambiar configuraciones
+- Modifica umbrales de detección para tu caso específico
+
+### 🔬 Modo Avanzado:
+```bash
+# Entrenar tu propio modelo con tus imágenes:
 python main.py --mode train
-
-# O usar notebook para experimentar
-jupyter lab notebooks/nopal_detector_training.ipynb
 ```
 
-## 🆘 ¿Necesitas Ayuda?
+## 🎯 Resumen de Comandos Importantes
 
-1. **Verificar configuración:**
-   ```bash
-   ./run.sh verify
-   ```
+```bash
+# SETUP (solo una vez)
+./setup.sh
+python verify_setup.py
 
-2. **Ver logs detallados:**
-   ```bash
-   python main.py --mode train --verbose
-   ```
+# USO DIARIO
+source venv/bin/activate              # Activar entorno
+python main.py --mode camera          # Cámara en tiempo real
+python main.py --mode predict --source imagen.jpg  # Analizar imagen
+python main.py --mode video --source video.mp4     # Procesar video
 
-3. **Limpiar y empezar de nuevo:**
-   ```bash
-   ./run.sh clean
-   rm -rf venv/
-   ./run.sh setup
-   ```
+# SOLUCIÓN DE PROBLEMAS
+python verify_setup.py               # Verificar instalación
+./setup.sh                          # Reinstalar si hay problemas
+```
 
-## 🎉 ¡Ya Estás Listo!
+## 📞 ¿Necesitas Ayuda?
 
-Una vez que tengas tu API key configurada, el proyecto se maneja solo. 
+1. **Primero:** Lee esta guía completa
+2. **Segundo:** Ejecuta `python verify_setup.py` para diagnósticos
+3. **Tercero:** Revisa las secciones de problemas comunes
+4. **Último recurso:** Abre un issue en GitHub
 
-**¿Todo configurado?** → Ejecuta `./run.sh train` y ¡a detectar nopales! 🌵
+---
+
+**¡Disfruta detectando nopales! 🌵✨**
+
+*Esta guía te debe haber tomado menos de 5 minutos. Si algo no está claro, ¡mejoremos la documentación juntos!*
