@@ -351,11 +351,11 @@ class CameraDetector:
             
             annotated_frame = frame.copy()
             
-            # Contadores para estadísticas
-            nopal_count = 0
+            # Contadores para estadísticas por clase
+            class_counts = {}
             person_count = 0
             
-            # Dibujar detecciones de nopales (verde)
+            # Dibujar detecciones de nopales (multi-clase)
             if res_nopal and len(res_nopal) > 0 and res_nopal[0].boxes is not None:
                 for box in res_nopal[0].boxes:
                     x1, y1, x2, y2 = [int(coord) for coord in box.xyxy[0]]
@@ -381,15 +381,37 @@ class CameraDetector:
                         if aspect_ratio > 4.0 or aspect_ratio < 0.25:  # Muy alargado o muy alto
                             continue
                     
-                    nopal_count += 1
+                    # Obtener la clase antes de incrementar contador
+                    class_id = int(box.cls) if box.cls is not None else 0
+                    class_names = self.nopal_model.names if hasattr(self.nopal_model, 'names') else {0: 'nopal'}
+                    class_name = class_names.get(class_id, 'nopal')
+                    
+                    # Incrementar contador de esta clase
+                    class_counts[class_name] = class_counts.get(class_name, 0) + 1
+                    
+                    # Colores para diferentes clases
+                    colors = {
+                        'nopal': (0, 255, 0),        # Verde
+                        'nopalChino': (255, 165, 0),  # Naranja
+                        0: (0, 255, 0),              # Verde por defecto
+                        1: (255, 165, 0)             # Naranja para clase 1
+                    }
+                    
+                    # Seleccionar color
+                    if class_name in colors:
+                        color = colors[class_name]
+                    elif class_id in colors:
+                        color = colors[class_id]
+                    else:
+                        color = (0, 255, 0)  # Verde por defecto
                     
                     # Dibujar rectángulo
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
                     
                     # Dibujar etiqueta
                     if box.conf is not None:
                         confidence = box.conf.item()
-                        label = f"Nopal: {confidence:.2f}"
+                        label = f"{class_name}: {confidence:.2f}"
                         
                         # Fondo para el texto
                         (text_width, text_height), _ = cv2.getTextSize(
@@ -399,13 +421,14 @@ class CameraDetector:
                             annotated_frame, 
                             (x1, y1 - text_height - 10), 
                             (x1 + text_width, y1), 
-                            (0, 255, 0), -1
+                            color, -1
                         )
                         
                         # Texto
+                        text_color = (255, 255, 255) if class_name == 'nopalChino' else (0, 0, 0)
                         cv2.putText(
                             annotated_frame, label, (x1, y1 - 5),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2
                         )
             
             # Dibujar detecciones de personas (azul)
@@ -441,7 +464,7 @@ class CameraDetector:
                             )
             
             # Agregar información en pantalla
-            self._draw_info_overlay(annotated_frame, nopal_count, person_count)
+            self._draw_info_overlay(annotated_frame, class_counts, person_count)
             
             return annotated_frame
             
@@ -449,34 +472,61 @@ class CameraDetector:
             print(f"⚠️ Error procesando frame: {e}")
             return frame
     
-    def _draw_info_overlay(self, frame: np.ndarray, nopal_count: int, person_count: int):
+    def _draw_info_overlay(self, frame: np.ndarray, class_counts: Dict[str, int], person_count: int):
         """
-        Dibuja información superpuesta en el frame
+        Dibuja información superpuesta en el frame con contadores por clase
         
         Args:
             frame: Frame a anotar
-            nopal_count: Número de nopales detectados
+            class_counts: Diccionario con contadores por clase
             person_count: Número de personas detectadas
         """
         height, width = frame.shape[:2]
         
+        # Obtener todas las clases disponibles del modelo
+        all_classes = []
+        if self.nopal_model and hasattr(self.nopal_model, 'names'):
+            all_classes = list(self.nopal_model.names.values())
+        else:
+            all_classes = ['nopal']  # Fallback
+        
+        # Calcular altura del overlay según número de clases totales
+        num_classes = len(all_classes)
+        overlay_height = 90 + (num_classes * 25)  # Base + 25px por cada clase
+        
         # Fondo semi-transparente para la información
         overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (350, 120), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (10, 10), (350, overlay_height), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
         
         # Información del proyecto
-        cv2.putText(frame, "Nopal Detector v1.0", (20, 35), 
+        cv2.putText(frame, "Nopal Detector", (20, 35), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
-        # Estadísticas de detección
-        cv2.putText(frame, f"Nopales: {nopal_count}", (20, 60), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        cv2.putText(frame, f"Personas: {person_count}", (20, 80), 
+        # Estadísticas de detección por clase
+        y_offset = 60
+        
+        # Colores para cada clase
+        colors = {
+            'nopal': (0, 255, 0),        # Verde
+            'nopalChino': (255, 165, 0)  # Naranja
+        }
+        
+        # Mostrar contador de todas las clases (incluso si el conteo es 0)
+        for class_name in sorted(all_classes):
+            count = class_counts.get(class_name, 0)  # 0 si no se detectó
+            color = colors.get(class_name, (0, 255, 0))
+            cv2.putText(frame, f"{class_name}: {count}", (20, y_offset), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            y_offset += 25
+        
+        # Personas
+        cv2.putText(frame, f"Personas: {person_count}", (20, y_offset), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        y_offset += 25
         
         # FPS
-        cv2.putText(frame, f"FPS: {self.current_fps:.1f}", (20, 105), 
+        cv2.putText(frame, f"FPS: {self.current_fps:.1f}", (20, y_offset), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
         
         # Controles
