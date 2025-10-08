@@ -13,9 +13,9 @@ from pathlib import Path
 # Agregar src al path
 sys.path.append(str(Path(__file__).parent / "src"))
 
-from data.dataset_manager import DatasetManager
-from models.detector import NopalPersonDetector
-from models.multi_class_detector import MultiClassDetector
+from src.data.dataset_manager import DatasetManager
+from src.models.detector import YOLODetector
+from src.models.multi_class_detector import MultiClassDetector
 from utils.visualization import ResultVisualizer
 from utils.config import load_config_with_env, setup_environment
 from utils.camera_detector import CameraDetector
@@ -154,13 +154,17 @@ def main():
                 if not args.data:
                     # Buscar el dataset más reciente en el directorio
                     import glob
-                    dataset_dirs = sorted(glob.glob("nopal-detector-*/data.yaml"), reverse=True)
-                    if dataset_dirs:
-                        args.data = dataset_dirs[0]
-                        logger.info("🔍 Dataset detectado: %s", args.data)
+                    # Descargar dataset desde Roboflow
+                    from src.data.dataset_manager import DatasetManager
+                    dataset_manager = DatasetManager(config)
+                    dataset_location = dataset_manager.download_dataset()
+                    data_yaml_path = dataset_manager.get_data_yaml_path()
+                    
+                    if data_yaml_path and os.path.exists(data_yaml_path):
+                        args.data = data_yaml_path
+                        logger.info("🔍 Dataset descargado y configurado: %s", args.data)
                     else:
-                        logger.error("❌ No se encontró ningún dataset")
-                        logger.info("� Descarga el dataset desde Roboflow primero")
+                        logger.error("❌ Error al descargar el dataset")
                         return
                 
                 if not os.path.exists(args.data):
@@ -185,8 +189,8 @@ def main():
                 data_yaml_path = dataset_manager.get_data_yaml_path()
                 
                 # Entrenar modelo
-                detector = NopalPersonDetector(config)
-                results = detector.train_nopal_model(data_yaml_path)
+                detector = YOLODetector(config)
+                results = detector.train_custom_model(data_yaml_path)
                 
                 logger.info("✅ Entrenamiento completado")
             
@@ -214,14 +218,23 @@ def main():
                 else:
                     logger.error("❌ Error en la predicción")
             else:
-                detector = NopalPersonDetector(config)
-                detector.load_models(args.weights)
+                detector = YOLODetector(config)
+                detector.load_model(args.weights)
                 
-                predictions_dir = detector.predict_images(args.input)
-                stats = detector.get_detection_stats(args.input)
+                results = detector.predict_image(
+                    args.input,
+                    conf_threshold=args.confidence,
+                    save_result=True
+                )
                 
-                logger.info(f"📊 Estadísticas: {stats}")
-                logger.info(f"✅ Guardado en: {predictions_dir}")
+                if results:
+                    logger.info("✅ Predicción completada!")
+                    detector.print_detection_summary(results.get('detections', []))
+                else:
+                    logger.error("❌ Error en la predicción")
+                
+                if 'output_path' in results:
+                    logger.info(f"✅ Guardado en: {results['output_path']}")
             
         elif args.mode == 'video':
             if not args.input:
@@ -235,8 +248,8 @@ def main():
                 logger.warning("⚠️ Video multi-clase en desarrollo")
                 logger.info("💡 Usa: --mode video (sin --multi-class)")
             else:
-                detector = NopalPersonDetector(config)
-                detector.load_models(args.weights)
+                detector = YOLODetector(config)
+                detector.load_model(args.weights)
                 
                 output_filename = args.output or "output_video.mp4"
                 output_path = detector.process_video(args.input, output_filename)

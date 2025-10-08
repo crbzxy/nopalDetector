@@ -13,8 +13,8 @@ from ultralytics import YOLO
 logger = logging.getLogger(__name__)
 
 
-class NopalPersonDetector:
-    """Detector dual para nopales y personas"""
+class YOLODetector:
+    """Detector YOLO genérico para entrenamiento y predicción"""
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -26,14 +26,12 @@ class NopalPersonDetector:
         self.config = config
         self.model_config = config['model']
         self.output_config = config['output']
-        
-        self.nopal_model = None
-        self.person_model = None
+        self.model = None
         self.best_model_path = None
         
-    def train_nopal_model(self, data_yaml_path: str) -> Dict[str, Any]:
+    def train_custom_model(self, data_yaml_path: str) -> Dict[str, Any]:
         """
-        Entrena el modelo para detección de nopales
+        Entrena un modelo personalizado con YOLO
         
         Args:
             data_yaml_path: Ruta del archivo data.yaml
@@ -41,16 +39,16 @@ class NopalPersonDetector:
         Returns:
             Dict: Resultados del entrenamiento
         """
-        logger.info("🤖 Entrenando modelo de nopales...")
+        logger.info("🤖 Iniciando entrenamiento...")
         
         # Cargar modelo base
-        model = YOLO(self.model_config['base_model'])
+        self.model = YOLO(self.model_config['base_model'])
         
         # Configuración de entrenamiento
         train_config = self.model_config['training']
         
         # Entrenar
-        results = model.train(
+        results = self.model.train(
             data=data_yaml_path,
             epochs=train_config['epochs'],
             imgsz=train_config['image_size'],
@@ -64,70 +62,73 @@ class NopalPersonDetector:
         logger.info(f"✅ Modelo guardado: {self.best_model_path}")
         return results
     
-    def load_models(self, nopal_model_path: Optional[str] = None) -> None:
+    def load_model(self, model_path: Optional[str] = None) -> None:
         """
-        Carga los modelos para predicción
+        Carga el modelo para predicción
         
         Args:
-            nopal_model_path: Ruta del modelo entrenado de nopales
+            model_path: Ruta del modelo entrenado
         """
-        logger.info("📥 Cargando modelos...")
+        logger.info("📥 Cargando modelo...")
         
-        # Cargar modelo de nopales
-        if nopal_model_path and os.path.exists(nopal_model_path):
-            self.nopal_model = YOLO(nopal_model_path)
-            logger.info(f"✅ Modelo nopales: {nopal_model_path}")
+        if model_path and os.path.exists(model_path):
+            self.model = YOLO(model_path)
+            logger.info(f"✅ Modelo cargado: {model_path}")
         elif self.best_model_path and os.path.exists(self.best_model_path):
-            self.nopal_model = YOLO(self.best_model_path)
-            logger.info(f"✅ Modelo nopales: {self.best_model_path}")
+            self.model = YOLO(self.best_model_path)
+            logger.info(f"✅ Modelo cargado: {self.best_model_path}")
         else:
-            logger.warning("⚠️ No se encontró modelo de nopales")
-            
-        # Cargar modelo de personas
-        self.person_model = YOLO(self.model_config['person_model'])
-        logger.info("✅ Modelo personas cargado")
+            logger.warning("⚠️ No se encontró el modelo")
     
-    def predict_images(self, test_img_dir: str) -> str:
+    def predict_image(self, image_path: str, conf_threshold: float = 0.5, save_result: bool = True) -> Dict[str, Any]:
         """
-        Realiza predicciones en imágenes de test
+        Realiza predicción en una imagen
         
         Args:
-            test_img_dir: Directorio con imágenes de test
+            image_path: Ruta de la imagen
+            conf_threshold: Umbral de confianza
+            save_result: Si guardar o no el resultado
             
         Returns:
-            str: Directorio con las predicciones
+            Dict: Resultados de la predicción
         """
-        if not self.nopal_model or not self.person_model:
-            raise ValueError("Primero debe cargar los modelos")
+        if not self.model:
+            raise ValueError("Primero debe cargar el modelo")
             
-        logger.info("🖼️ Procesando imágenes: %s", test_img_dir)
+        logger.info("🖼️ Procesando imagen: %s", image_path)
         
         # Crear directorio de salida
         predictions_dir = self.output_config['predictions_dir']
         os.makedirs(predictions_dir, exist_ok=True)
         
-        # Configuración de predicción
-        conf_thresh = self.model_config['prediction']['confidence_threshold']
+        # Realizar predicción
+        results = self.model(image_path, conf=conf_threshold, save=save_result)
         
-        # Realizar predicciones
-        res_nopal = self.nopal_model(test_img_dir, save=False, conf=conf_thresh)
-        res_person = self.person_model(test_img_dir, save=False, conf=conf_thresh)
+        # Procesar resultados
+        detections = []
+        if len(results) > 0:
+            result = results[0]  # tomar primer resultado
+            boxes = result.boxes
+            
+            for box in boxes:
+                detection = {
+                    'bbox': box.xyxy[0].tolist(),
+                    'confidence': float(box.conf),
+                    'class_id': int(box.cls),
+                    'class_name': result.names[int(box.cls)]
+                }
+                detections.append(detection)
         
-        # Anotar imágenes
-        for idx, r_nopal in enumerate(res_nopal):
-            img_path = r_nopal.path
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
-                
-            annotated_img = self._annotate_image(img, r_nopal, res_person[idx])
-            
-            # Guardar imagen anotada
-            out_path = os.path.join(predictions_dir, os.path.basename(img_path))
-            cv2.imwrite(out_path, annotated_img)
-            
-        logger.info("✅ Guardado en: %s", predictions_dir)
-        return predictions_dir
+        # Si se guardó el resultado, incluir la ruta
+        output_path = None
+        if save_result:
+            output_path = os.path.join(predictions_dir, 
+                                     os.path.basename(image_path))
+        
+        return {
+            'detections': detections,
+            'output_path': output_path
+        }
     
     def process_video(self, video_path: str, output_filename: str = "output_video.mp4") -> str:
         """
@@ -140,8 +141,8 @@ class NopalPersonDetector:
         Returns:
             str: Ruta del video procesado
         """
-        if not self.nopal_model or not self.person_model:
-            raise ValueError("Primero debe cargar los modelos")
+        if not self.model:
+            raise ValueError("Primero debe cargar el modelo")
             
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video no encontrado: {video_path}")
@@ -153,59 +154,44 @@ class NopalPersonDetector:
         os.makedirs(videos_dir, exist_ok=True)
         
         output_path = os.path.join(videos_dir, output_filename)
-        
-        # Configurar captura de video
-        cap = cv2.VideoCapture(video_path)
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        
-        # Configurar escritor de video
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
-        
         conf_thresh = self.model_config['prediction']['confidence_threshold']
-        frame_count = 0
         
-        logger.info("🎬 Procesando frames...")
+        # Usar YOLO para procesar video
+        self.model.predict(
+            source=video_path,
+            conf=conf_thresh,
+            save=True,
+            project=videos_dir,
+            name=output_filename
+        )
         
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-                
-            # Realizar predicciones
-            res_nopal = self.nopal_model(frame, conf=conf_thresh, verbose=False)
-            res_person = self.person_model(frame, conf=conf_thresh, verbose=False)
-            
-            # Anotar frame
-            annotated_frame = self._annotate_image(frame, res_nopal[0], res_person[0])
-            
-            # Escribir frame
-            out.write(annotated_frame)
-            frame_count += 1
-            
-            # Progreso cada 100 frames
-            if frame_count % 100 == 0:
-                logger.info("📹 Frames procesados: %d", frame_count)
+        logger.info("✅ Video procesado")
         
-        cap.release()
-        out.release()
-        
-        logger.info("✅ Video guardado: %s", output_path)
         return output_path
-    
-    def _annotate_image(self, img: np.ndarray, nopal_results, person_results) -> np.ndarray:
+        
+    def print_detection_summary(self, detections: list) -> None:
         """
-        Anota una imagen con las detecciones de nopales y personas
+        Imprime un resumen de las detecciones realizadas
         
         Args:
-            img: Imagen original
-            nopal_results: Resultados de detección de nopales
-            person_results: Resultados de detección de personas
+            detections: Lista de detecciones
+        """
+        if not detections:
+            logger.info("❌ No se encontraron objetos")
+            return
             
-        Returns:
-            np.ndarray: Imagen anotada
+        # Contabilizar detecciones por clase
+        class_counts = {}
+        for det in detections:
+            class_name = det['class_name']
+            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+            
+        # Imprimir resumen
+        logger.info("\n🎯 Detecciones:")
+        for class_name, count in class_counts.items():
+            logger.info(f"  {class_name}: {count}")
+        
+        """
         """
         annotated_img = img.copy()
         
@@ -217,7 +203,8 @@ class NopalPersonDetector:
                 
                 if box.conf is not None:
                     confidence = box.conf.item()
-                    label = f"nopal: {confidence:.2f}"
+                    class_name = nopal_results.names[int(box.cls)]
+                    label = f"{class_name}: {confidence:.2f}"
                     cv2.putText(
                         annotated_img, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
