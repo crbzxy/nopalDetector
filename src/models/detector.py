@@ -6,8 +6,11 @@ Maneja el entrenamiento y las predicciones
 import os
 import cv2
 import numpy as np
-from typing import Dict, Any, List, Tuple, Optional
+import logging
+from typing import Dict, Any, Optional
 from ultralytics import YOLO
+
+logger = logging.getLogger(__name__)
 
 
 class NopalPersonDetector:
@@ -38,7 +41,7 @@ class NopalPersonDetector:
         Returns:
             Dict: Resultados del entrenamiento
         """
-        print("🤖 Iniciando entrenamiento del modelo de nopales...")
+        logger.info("🤖 Entrenando modelo de nopales...")
         
         # Cargar modelo base
         model = YOLO(self.model_config['base_model'])
@@ -58,7 +61,7 @@ class NopalPersonDetector:
         # Guardar ruta del mejor modelo
         self.best_model_path = os.path.join("runs/detect/train/weights/best.pt")
         
-        print(f"✅ Entrenamiento completado. Mejor modelo: {self.best_model_path}")
+        logger.info(f"✅ Modelo guardado: {self.best_model_path}")
         return results
     
     def load_models(self, nopal_model_path: Optional[str] = None) -> None:
@@ -68,21 +71,21 @@ class NopalPersonDetector:
         Args:
             nopal_model_path: Ruta del modelo entrenado de nopales
         """
-        print("📥 Cargando modelos...")
+        logger.info("📥 Cargando modelos...")
         
         # Cargar modelo de nopales
         if nopal_model_path and os.path.exists(nopal_model_path):
             self.nopal_model = YOLO(nopal_model_path)
-            print(f"✅ Modelo de nopales cargado: {nopal_model_path}")
+            logger.info(f"✅ Modelo nopales: {nopal_model_path}")
         elif self.best_model_path and os.path.exists(self.best_model_path):
             self.nopal_model = YOLO(self.best_model_path)
-            print(f"✅ Modelo de nopales cargado: {self.best_model_path}")
+            logger.info(f"✅ Modelo nopales: {self.best_model_path}")
         else:
-            print("⚠️ No se encontró modelo entrenado de nopales")
+            logger.warning("⚠️ No se encontró modelo de nopales")
             
         # Cargar modelo de personas
         self.person_model = YOLO(self.model_config['person_model'])
-        print("✅ Modelo de personas cargado")
+        logger.info("✅ Modelo personas cargado")
     
     def predict_images(self, test_img_dir: str) -> str:
         """
@@ -97,7 +100,7 @@ class NopalPersonDetector:
         if not self.nopal_model or not self.person_model:
             raise ValueError("Primero debe cargar los modelos")
             
-        print(f"🖼️ Procesando imágenes en: {test_img_dir}")
+        logger.info("🖼️ Procesando imágenes: %s", test_img_dir)
         
         # Crear directorio de salida
         predictions_dir = self.output_config['predictions_dir']
@@ -123,7 +126,7 @@ class NopalPersonDetector:
             out_path = os.path.join(predictions_dir, os.path.basename(img_path))
             cv2.imwrite(out_path, annotated_img)
             
-        print(f"✅ Predicciones guardadas en: {predictions_dir}")
+        logger.info("✅ Guardado en: %s", predictions_dir)
         return predictions_dir
     
     def process_video(self, video_path: str, output_filename: str = "output_video.mp4") -> str:
@@ -143,7 +146,7 @@ class NopalPersonDetector:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video no encontrado: {video_path}")
             
-        print(f"🎥 Procesando video: {video_path}")
+        logger.info("🎥 Procesando: %s", video_path)
         
         # Crear directorio de salida
         videos_dir = self.output_config['videos_dir']
@@ -164,7 +167,7 @@ class NopalPersonDetector:
         conf_thresh = self.model_config['prediction']['confidence_threshold']
         frame_count = 0
         
-        print("🎬 Procesando frames...")
+        logger.info("🎬 Procesando frames...")
         
         while cap.isOpened():
             ret, frame = cap.read()
@@ -184,12 +187,12 @@ class NopalPersonDetector:
             
             # Progreso cada 100 frames
             if frame_count % 100 == 0:
-                print(f"📹 Procesados {frame_count} frames...")
+                logger.info("📹 Frames procesados: %d", frame_count)
         
         cap.release()
         out.release()
         
-        print(f"✅ Video procesado guardado en: {output_path}")
+        logger.info("✅ Video guardado: %s", output_path)
         return output_path
     
     def _annotate_image(self, img: np.ndarray, nopal_results, person_results) -> np.ndarray:
