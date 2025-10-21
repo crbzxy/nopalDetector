@@ -16,9 +16,9 @@ sys.path.append(str(Path(__file__).parent / "src"))
 from src.data.dataset_manager import DatasetManager
 from src.models.detector import YOLODetector
 from src.models.multi_class_detector import MultiClassDetector
-from utils.visualization import ResultVisualizer
-from utils.config import load_config_with_env, setup_environment
-from utils.camera_detector import CameraDetector
+from src.utils.visualization import ResultVisualizer
+from src.utils.config import load_config_with_env, setup_environment
+from src.utils.camera_detector import CameraDetector
 from update_labels import LabelUpdater
 
 # Configurar logging
