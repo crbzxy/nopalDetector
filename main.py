@@ -19,6 +19,8 @@ from models.multi_class_detector import MultiClassDetector
 from utils.visualization import ResultVisualizer
 from utils.config import load_config_with_env, setup_environment
 from utils.camera_detector import CameraDetector
+from utils.validators import InputValidator
+from utils.error_handler import ResourceManager, log_execution_time
 from update_labels import LabelUpdater
 
 # Configurar logging
@@ -58,6 +60,7 @@ def check_for_label_updates(config, quiet=False):
     
     return False
 
+@log_execution_time
 def main():
     parser = argparse.ArgumentParser(description='Nopal Detector - Sistema Multi-Clase Inteligente')
     
@@ -72,7 +75,7 @@ def main():
                        help='Modo de operación')
     
     # Argumentos de entrada/salida
-    parser.add_argument('--input', '-i',
+    parser.add_argument('--input', '-i', '--source',
                        help='Ruta de entrada (imagen, video o directorio)')
     parser.add_argument('--output', '-o',
                        help='Ruta de salida')
@@ -191,11 +194,14 @@ def main():
                 logger.info("✅ Entrenamiento completado")
             
         elif args.mode == 'predict':
-            if not args.input:
-                logger.error("❌ Falta --input")
+            # Validar entrada
+            is_valid, msg = InputValidator.validate_image_path(args.input, allow_dir=True)
+            if not is_valid:
+                logger.error(msg)
                 logger.info("💡 Ejemplo: python main.py --mode predict --input imagen.jpg")
                 return
-                
+            logger.info(msg)
+            
             logger.info("🔍 Realizando predicciones...")
             
             if args.multi_class:
@@ -224,11 +230,14 @@ def main():
                 logger.info(f"✅ Guardado en: {predictions_dir}")
             
         elif args.mode == 'video':
-            if not args.input:
-                logger.error("❌ Falta --input")
+            # Validar entrada
+            is_valid, msg = InputValidator.validate_video_path(args.input)
+            if not is_valid:
+                logger.error(msg)
                 logger.info("💡 Ejemplo: python main.py --mode video --input video.mp4")
                 return
-                
+            logger.info(msg)
+            
             logger.info("🎥 Procesando video...")
             
             if args.multi_class:
@@ -250,7 +259,15 @@ def main():
                 logger.info(f"  {i}: {name}")
         
         elif args.mode == 'camera':
-            if not args.weights:
+            # Validar pesos
+            if args.weights:
+                is_valid, msg = InputValidator.validate_weights_path(args.weights)
+                if not is_valid:
+                    logger.error(msg)
+                    logger.info("💡 Ejemplo: python main.py --mode camera --weights runs/detect/train4/weights/best.pt")
+                    return
+                logger.info(msg)
+            else:
                 logger.error("❌ Faltan --weights")
                 logger.info("💡 Ejemplo: python main.py --mode camera --weights runs/detect/train4/weights/best.pt")
                 return

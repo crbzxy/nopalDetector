@@ -1,274 +1,221 @@
-# 🌵 Nopal Detector - Sistema Multi-Clase Inteligente
+
+# 🌵 Nopal Detector — guía práctica y rápida
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://python.org)
 [![YOLOv11](https://img.shields.io/badge/YOLOv11-Ultralytics-orange)](https://ultralytics.com)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-Sistema avanzado de detección y clasificación de nopales usando **YOLOv11** con soporte para múltiples especies y actualización automática de etiquetas.
+Un detector multi-clase para nopales y personas basado en YOLO (Ultralytics). Esta README se centra en que puedas ejecutar el proyecto localmente de forma rápida y reproducible.
 
-Un proyecto completo que utiliza la tecnología más avanzada (YOLOv11) para identificar múltiples tipos de nopales y personas en imágenes, videos y cámara en vivo. Diseñado para ser fácil de usar, incluso sin conocimientos técnicos previos.
-
-## ✨ Características Principales
-
-### 🎯 **Sistema Multi-Clase**
-- **Detección de múltiples tipos** de nopales (`nopal`, `nopalChino`)
-- **Visualización diferenciada** por colores
-- **Entrenamiento dinámico** con nuevas clases
-- **Actualización automática** de datasets via Roboflow API
-
-### 🚀 **Funcionalidades Core**
-- **🔄 Actualización Automática**: Sincronización automática con Roboflow
-- **🎨 Colores Dinámicos**: Generación automática de colores únicos por clase
-- **📊 Estadísticas Avanzadas**: Reportes detallados por clase
-- **📷 Tiempo Real**: Detección en cámara con 30 FPS
-- **🤖 Entrenamiento Inteligente**: Sistema adaptativo para nuevas clases
-
-## 📊 Métricas del Modelo Actual
-
-- **mAP50 General**: 49.2%
-  - `nopal`: 23.0% mAP50 (Precisión: 18.0%, Recall: 100%)
-  - `nopalChino`: 75.4% mAP50 (Precisión: 75.9%, Recall: 77.3%)
-- **Tiempo de inferencia**: ~110ms por imagen
-- **Tamaño del modelo**: 19.2 MB
-- **Clases soportadas**: 2 tipos de nopales + personas
-
-## 🎨 Sistema de Visualización
-
-### Códigos de Color por Clase
-- 🟢 **Nopal**: Verde (RGB: 0, 255, 0)
-- 🟠 **NopalChino**: Naranja (RGB: 255, 165, 0)
-- 🔵 **Personas**: Azul (RGB: 255, 0, 0)
-
-## 🎯 ¿Qué hace este proyecto?
-
-Este sistema puede:
-
-- 📹 **Detectar en tiempo real** múltiples tipos de nopales y personas usando tu cámara web
-- 🖼️ **Analizar imágenes** para encontrar nopales automáticamente con clasificación
-- 🎥 **Procesar videos** completos identificando objetos frame por frame
-- 🎓 **Entrenar modelos personalizados** con tus propios datos
-- 📊 **Generar estadísticas** y visualizaciones de los resultados
-- 🔄 **Actualizar automáticamente** con nuevas clases desde Roboflow
-
-## 🛠️ Instalación Rápida
-
+TL;DR — 3 comandos para empezar
 ```bash
-# Clonar repositorio
 git clone https://github.com/crbzxy/nopalDetector.git
 cd nopalDetector
+make install   # o: ./install.sh
+```
 
-# Instalar dependencias automáticamente
-chmod +x install.sh
-./install.sh
+💡 **Comandos `make` disponibles:**
+```bash
+make help          # Ver todos los comandos
+make check-env     # Verificar instalación  
+make status        # Estado del proyecto
+make train         # Entrenar modelo
+make predict-dir   # Predicciones en directorio
+make camera        # Detección en tiempo real
+```
+📊 Ver [tabla completa de comandos](#comandos-make-disponibles) más abajo
 
-# O instalación manual
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+Por qué usarlo
+- Detección multi-clase (p. ej. `nopal`, `nopalChino`, `person`).
+- Modo cámara en tiempo real, procesamiento de imágenes/video y entrenamiento personalizado.
+- Integración con Roboflow para actualizar datasets.
+
+Primeros pasos (recomendado)
+1. Clona el repositorio y accede al directorio (ya mostrado en TL;DR).
+2. Crea/activa un entorno virtual y asegúrate de usar el Python del `venv`:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 🚀 Uso Rápido
+3. (Opcional) Permite ejecución de scripts y genera datos de ejemplo:
 
-### 1. 📷 Detección Multi-Clase en Tiempo Real
 ```bash
-# Cámara con detección multi-clase
-python main.py --mode camera --multi-class --weights runs/detect/train4/weights/best.pt --camera 0
-
-# Controles durante la detección:
-# - 'q': Salir
-# - 's': Guardar frame
-# - SPACE: Pausar/reanudar
-# - 'c'/'v': Ajustar confianza
-# - 'x'/'z': Ajustar IoU
-# - 'f': Activar/desactivar filtros
+chmod +x scripts/*.sh
+./scripts/init_dataset.sh nopal-detector-3 "nopal,nopalChino,person"
+./venv/bin/python scripts/generate_sample_dataset.py nopal-detector-3
 ```
 
-### 2. 🖼️ Análisis de Imágenes Multi-Clase
-```bash
-# Imagen individual
-python main.py --mode predict --multi-class --weights runs/detect/train4/weights/best.pt --input imagen.jpg
+Comandos principales (copiar/pegar)
 
-# Procesamiento en lote
-python main.py --mode batch --multi-class --batch-dir /ruta/imagenes/
+### 1️⃣ Listar cámaras disponibles
+```bash
+python3 main.py --mode list-cameras
 ```
 
-### 3. 🎓 Entrenamiento Multi-Clase
+### 2️⃣ Entrenar el modelo (usar `data.yaml` creado por `init_dataset.sh` o Roboflow)
 ```bash
-# Entrenar con dataset multi-clase
-python main.py --mode train --multi-class --data nopal-detector-3/data.yaml
-
-# Entrenar con actualización automática
-python main.py --mode train --multi-class --auto-update
+python3 main.py --mode train --multi-class --data nopal-detector-3/data.yaml
 ```
 
-### 4. 🔄 Actualización Automática de Datasets
+**Resultado:** Los pesos entrenados se guardarán en `runs/detect/trainX/weights/best.pt` (donde X es el número del run).
+
+### 3️⃣ Realizar predicciones
+
+#### Sobre una imagen individual:
 ```bash
-# Verificar y descargar nuevas versiones
-python main.py --mode update-labels --auto-update
+python3 main.py --mode predict --multi-class \
+  --weights runs/detect/train6/weights/best.pt \
+  --input imagen.jpg
 ```
 
-## 📁 Estructura del Proyecto
+#### Sobre un directorio de imágenes:
+```bash
+# ⚠️ IMPORTANTE: La estructura del dataset debe ser:
+# nopal-detector-4/
+# ├── images/
+# │   ├── train/
+# │   ├── val/
+# │   └── test/     # <-- Crea este directorio si no existe
 
+# Opción 1: Usar el directorio de validación
+python3 main.py --mode predict \
+  --source nopal-detector-4/images/val \
+  --weights runs/detect/train6/weights/best.pt
+
+# Opción 2: Crear y usar directorio de test
+mkdir -p nopal-detector-4/images/test
+cp nopal-detector-4/images/val/* nopal-detector-4/images/test/  # Copia imágenes de ejemplo
+python3 main.py --mode predict \
+  --source nopal-detector-4/images/test \
+  --weights runs/detect/train6/weights/best.pt
+```
+
+**Nota:** El parámetro `--source` debe apuntar a:
+- Una imagen individual: `imagen.jpg`
+- Un directorio existente con imágenes: `nopal-detector-4/images/val/`
+- ❌ **NO** usar rutas que no existan como `nopal-detector-4/test/images`
+
+### 4️⃣ Cámara en tiempo real (multi-clase)
+```bash
+python3 main.py --mode camera --multi-class \
+  --weights runs/detect/train6/weights/best.pt \
+  --camera 0
+```
+
+### 5️⃣ Actualizar etiquetas desde Roboflow
+```bash
+python3 main.py --mode update-labels --auto-update
+```
+
+Notas sobre rutas de pesos
+- Los pesos de ejemplo se guardan en `runs/detect/<run>/weights/best.pt` después del entrenamiento.
+- Si `runs/detect/<run>/weights/best.pt` no existe, ejecuta primero un entrenamiento de prueba o apunta a un checkpoint válido.
+
+Comandos Make Disponibles
+
+Puedes usar `make` para operaciones comunes. Lista completa:
+
+| Comando | Descripción | Ejemplo |
+|---------|-------------|----------|
+| `make help` | Mostrar ayuda | `make help` |
+| `make install` | Instalar dependencias y configurar entorno | `make install` |
+| `make check-env` | Verificar configuración del entorno | `make check-env` |
+| `make status` | Mostrar estado del proyecto | `make status` |
+| **ENTRENAMIENTO** |
+| `make train` | Entrenar modelo (requiere DATA) | `make train DATA=nopal-detector-4/data.yaml` |
+| **PREDICCIÓN** |
+| `make predict-image` | Predecir sobre imagen | `make predict-image WEIGHTS=runs/detect/train6/weights/best.pt INPUT=imagen.jpg` |
+| `make predict-dir` | Predecir sobre directorio | `make predict-dir WEIGHTS=runs/detect/train6/weights/best.pt SOURCE=nopal-detector-4/images/val` |
+| **CÁMARA** |
+| `make list-cameras` | Listar cámaras disponibles | `make list-cameras` |
+| `make camera` | Detección en tiempo real | `make camera WEIGHTS=runs/detect/train6/weights/best.pt CAMERA=0` |
+| **UTILIDADES** |
+| `make setup-test` | Crear directorio de test | `make setup-test DATASET=nopal-detector-4` |
+| `make update-labels` | Actualizar etiquetas desde Roboflow | `make update-labels` |
+| `make validate` | Validar modelo | `make validate WEIGHTS=runs/detect/train6/weights/best.pt DATA=nopal-detector-4/data.yaml` |
+| `make clean` | Limpiar archivos temporales | `make clean` |
+| `make clean-all` | Limpiar todo (venv, runs, outputs) | `make clean-all` |
+
+**Ejemplos rápidos:**
+```bash
+# Setup inicial
+make install
+make check-env
+
+# Ver estado
+make status
+make list-cameras
+
+# Entrenar y predecir
+make train DATA=nopal-detector-4/data.yaml
+make predict-dir WEIGHTS=runs/detect/train6/weights/best.pt SOURCE=nopal-detector-4/images/val
+```
+
+Scripts útiles (en `scripts/`)
+- `scripts/init_dataset.sh <dir> "clase1,clase2,..."` — crea la estructura YOLO y escribe `data.yaml`.
+- `scripts/generate_sample_dataset.py <dir>` — genera imágenes/labels de ejemplo para pruebas rápidas.
+- `scripts/train.sh <ruta/data.yaml> [ruta/pesos]` — wrapper amigable que usa el Python del venv.
+- `scripts/eval.sh <ruta/data.yaml> <checkpoint>` — evalúa un checkpoint.
+
+Configuración (.env)
+
+**Paso 1:** Copia el archivo de ejemplo
+```bash
+cp .env.example .env
+```
+
+**Paso 2:** Edita `.env` y completa tu API key de Roboflow  
+Obtén tu API key en: https://roboflow.com/settings/api
+
+```bash
+# MÍNIMO REQUERIDO
+ROBOFLOW_API_KEY=tu_api_key_aqui
+ROBOFLOW_WORKSPACE=nopaldetector
+ROBOFLOW_PROJECT=nopal-detector-0lzvl
+ROBOFLOW_VERSION=4  # ⚠️ Usa versión 4 (la más reciente)
+
+# OPCIONAL
+MODEL_CONFIDENCE_THRESHOLD=0.3  # 0.3=más detecciones | 0.7=más preciso
+DEVICE=cpu  # cpu | cuda (NVIDIA) | mps (Mac M1/M2/M3)
+```
+
+**Verificar configuración:**
+```bash
+make check-env
+```
+
+📚 **Documentación completa:** [docs/ENV_VARIABLES.md](docs/ENV_VARIABLES.md)
+
+Solución de problemas rápida
+- ModuleNotFoundError: No module named 'yaml' — activa el `venv` y ejecuta:
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+```
+- `python` no encontrado en zsh: usa `python3` o activa el venv (`source venv/bin/activate`).
+- Peso no encontrado (`best.pt`): comprueba `ls runs/detect/*/weights/` o entrena con `./scripts/train.sh`.
+
+Estructura del proyecto (relevante)
 ```
 nopalDetector/
-├── 📄 main.py                    # Script principal
-├── 📁 src/                       # Código fuente
-│   ├── 📁 models/               # Detectores de IA
-│   ├── 📁 utils/                # Utilidades
-│   └── 📁 data/                 # Gestión de datos
-├── 📁 config/                   # Configuraciones
-├── 📁 models/weights/           # Modelos entrenados
-├── 📁 nopal-detector-3/         # Dataset multi-clase actual
-├── 📁 outputs/                  # Resultados
-│   ├── 📁 predictions/          # Imágenes procesadas
-│   ├── 📁 videos/              # Videos procesados
-│   └── 📁 visualizations/      # Gráficos y estadísticas
-└── 📁 runs/                     # Entrenamientos
-    └── 📁 detect/train4/        # Último modelo multi-clase
+├─ main.py                 # Entrada CLI
+├─ install.sh              # Instalador rápido
+├─ scripts/                # Scripts de ayuda (init, train, eval, generar muestras)
+├─ src/                    # Código fuente: models, utils, data
+├─ config/                 # Configs YAML
+└─ runs/                   # Salidas de entrenamiento (weights, logs)
 ```
 
-## 🎮 Guía de Comandos Principales
+Métricas y clases (ejemplo)
+- mAP50 (ejemplo): 49.2% — resultados varían por dataset y run.
+- Clases: `['nopal', 'nopalChino', 'person']`
 
-### Detección en Tiempo Real
-```bash
-# Multi-clase con cámara
-python main.py --mode camera --multi-class --weights runs/detect/train4/weights/best.pt --camera 0
+Contribuir
+- Haz fork, crea una rama, añade tests/ejemplos y abre un PR. Sigue buenas prácticas de commits.
 
-# Clásico (solo nopales)
-python main.py --mode camera --weights modelo.pt --camera 0 --save-video
-```
-
-### Procesamiento de Imágenes
-```bash
-# Multi-clase
-python main.py --mode predict --multi-class --input imagen.jpg --confidence 0.3
-
-# Batch multi-clase
-python main.py --mode batch --multi-class --batch-dir fotos/ --output resultados/
-```
-
-### Entrenamiento y Datos
-```bash
-# Entrenar modelo multi-clase
-python main.py --mode train --multi-class --data nopal-detector-3/data.yaml
-
-# Listar cámaras disponibles
-python main.py --mode list-cameras
-
-# Actualizar datasets desde Roboflow
-python main.py --mode update-labels --auto-update
-```
-
-## ⚙️ Configuración Avanzada
-
-### Variables de Entorno (.env)
-```bash
-# Configurar API de Roboflow
-ROBOFLOW_API_KEY=tu_api_key_aqui
-ROBOFLOW_WORKSPACE=tu_workspace
-ROBOFLOW_PROJECT=tu_proyecto
-```
-
-### Parámetros de Detección
-```bash
-# Ajustar sensibilidad
-python main.py --mode camera --multi-class --confidence 0.3  # Más sensible
-python main.py --mode camera --multi-class --confidence 0.7  # Menos sensible
-
-# Configurar resolución de cámara
-python main.py --mode camera --multi-class --resolution 1280x720
-```
-
-## 🔧 Troubleshooting
-
-### Problemas Comunes
-
-#### 🎥 Cámara no funciona
-```bash
-# Listar cámaras disponibles
-python main.py --mode list-cameras
-
-# Probar diferentes índices
-python main.py --mode camera --multi-class --camera 0  # o 1, 2, etc.
-```
-
-#### 📁 Error de modelo no encontrado
-```bash
-# Verificar ruta del modelo
-ls runs/detect/train4/weights/best.pt
-
-# Usar modelo base si no tienes entrenado
-python main.py --mode camera --weights yolo11s.pt
-```
-
-#### 🔄 Problemas con Roboflow
-```bash
-# Verificar configuración
-python debug_download.py
-
-# Actualizar manualmente
-python update_labels.py
-```
-
-## 📈 Rendimiento y Optimización
-
-### Requisitos de Sistema
-- **CPU**: Intel i5 o equivalente (mínimo)
-- **RAM**: 8GB (recomendado 16GB)
-- **GPU**: Opcional (CUDA compatible para mayor velocidad)
-- **Cámara**: Cualquier webcam USB o integrada
-
-### Optimización de Velocidad
-```bash
-# Reducir resolución para mayor FPS
-python main.py --mode camera --multi-class --resolution 640x480
-
-# Ajustar confianza para menos procesamiento
-python main.py --mode camera --multi-class --confidence 0.5
-```
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📜 Changelog
-
-### v3.0 (Octubre 2025) - Sistema Multi-Clase
-- ✅ **Nueva funcionalidad**: Detección multi-clase (nopal, nopalChino)
-- ✅ **Nueva funcionalidad**: Cámara multi-clase en tiempo real
-- ✅ **Mejora**: Integración completa con Roboflow API
-- ✅ **Mejora**: Sistema de colores diferenciados por clase
-- ✅ **Mejora**: Actualización automática de datasets
-- ✅ **Mejora**: Controles dinámicos en tiempo real
-- ✅ **Nuevo**: debug_download.py para troubleshooting
-- ✅ **Optimización**: Filtros anti-falsos positivos mejorados
-
-### v2.0 (Previo)
-- ✅ Detección básica de nopales y personas
-- ✅ Entrenamiento con YOLOv11
-- ✅ Interfaz de cámara básica
-- ✅ Procesamiento batch
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👨‍💻 Autor
-
-**Carlos Boyzo** - [crbzxy](https://github.com/crbzxy)
-
-## 🙏 Agradecimientos
-
-- [Ultralytics](https://ultralytics.com) por YOLOv11
-- [Roboflow](https://roboflow.com) por la plataforma de datos
-- Comunidad open source por las librerías utilizadas
-
----
-
-## 🌵 ¡Detecta nopales como un experto con IA! 🚀
-
-**¿Encontraste útil este proyecto? ¡Dale una ⭐ al repositorio!**
+Contacto
+- Autor: Carlos Boyzo — [crbzxy](https://github.com/crbzxy)
+- GitHub: [nopalDetector](https://github.com/crbzxy/nopalDetector)

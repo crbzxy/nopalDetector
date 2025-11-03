@@ -9,6 +9,12 @@ import numpy as np
 import logging
 from typing import Dict, Any, Optional
 from ultralytics import YOLO
+from sys import path as syspath
+from pathlib import Path
+
+# Importar error handler
+syspath.insert(0, str(Path(__file__).parent.parent))
+from utils.error_handler import ResourceManager, log_execution_time
 
 logger = logging.getLogger(__name__)
 
@@ -129,9 +135,10 @@ class NopalPersonDetector:
         logger.info("✅ Guardado en: %s", predictions_dir)
         return predictions_dir
     
+    @log_execution_time
     def process_video(self, video_path: str, output_filename: str = "output_video.mp4") -> str:
         """
-        Procesa un video aplicando detecciones
+        Procesa un video aplicando detecciones con manejo seguro de recursos.
         
         Args:
             video_path: Ruta del video de entrada
@@ -139,6 +146,11 @@ class NopalPersonDetector:
             
         Returns:
             str: Ruta del video procesado
+            
+        Raises:
+            ValueError: Si los modelos no están cargados
+            FileNotFoundError: Si el video no existe
+            RuntimeError: Si hay error al procesar el video
         """
         if not self.nopal_model or not self.person_model:
             raise ValueError("Primero debe cargar los modelos")
@@ -151,46 +163,51 @@ class NopalPersonDetector:
         # Crear directorio de salida
         videos_dir = self.output_config['videos_dir']
         os.makedirs(videos_dir, exist_ok=True)
-        
         output_path = os.path.join(videos_dir, output_filename)
-        
-        # Configurar captura de video
-        cap = cv2.VideoCapture(video_path)
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        
-        # Configurar escritor de video
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
         
         conf_thresh = self.model_config['prediction']['confidence_threshold']
         frame_count = 0
         
         logger.info("🎬 Procesando frames...")
         
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-                
-            # Realizar predicciones
-            res_nopal = self.nopal_model(frame, conf=conf_thresh, verbose=False)
-            res_person = self.person_model(frame, conf=conf_thresh, verbose=False)
+        # Usar context manager para garantizar liberación de recursos
+        with ResourceManager(video_path, mode='read') as cap:
+            # Crear writer con propiedades del video original
+            rm = ResourceManager(video_path, mode='read')
+            frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = int(cap.get(cv2.CAP_PROP_FPS))
             
-            # Anotar frame
-            annotated_frame = self._annotate_image(frame, res_nopal[0], res_person[0])
+            # Configurar escritor de video
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
             
-            # Escribir frame
-            out.write(annotated_frame)
-            frame_count += 1
+            if not out.isOpened():
+                raise RuntimeError(f"No se pudo crear VideoWriter: {output_path}")
             
-            # Progreso cada 100 frames
-            if frame_count % 100 == 0:
-                logger.info("📹 Frames procesados: %d", frame_count)
-        
-        cap.release()
-        out.release()
+            try:
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                        
+                    # Realizar predicciones
+                    res_nopal = self.nopal_model(frame, conf=conf_thresh, verbose=False)
+                    res_person = self.person_model(frame, conf=conf_thresh, verbose=False)
+                    
+                    # Anotar frame
+                    annotated_frame = self._annotate_image(frame, res_nopal[0], res_person[0])
+                    
+                    # Escribir frame
+                    out.write(annotated_frame)
+                    frame_count += 1
+                    
+                    # Progreso cada 100 frames
+                    if frame_count % 100 == 0:
+                        logger.info("📹 Frames procesados: %d", frame_count)
+            finally:
+                out.release()
+                logger.debug("✅ VideoWriter liberado")
         
         logger.info("✅ Video guardado: %s", output_path)
         return output_path
